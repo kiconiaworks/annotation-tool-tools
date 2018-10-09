@@ -1,0 +1,63 @@
+
+import click
+import json
+from collections import defaultdict
+import random
+import os
+import boto3
+import imageio
+from PIL import ImageFont, ImageDraw, Image
+import cv2
+import numpy as np
+
+
+def generate_url(s3, bucket_name, key):
+    return s3.generate_presigned_url(
+        ClientMethod = 'get_object',
+        Params = {'Bucket' : bucket_name, 'Key' : key},
+        ExpiresIn = 3600,
+        HttpMethod = 'GET')
+
+
+@click.command()
+@click.argument('filename')
+@click.argument('output_dir')
+@click.option('--bucket', '-b')
+@click.option('--profile', '-p')
+def main(filename, output_dir, bucket, profile):
+    fontpath = 'font/ipaexg.ttf'
+    font = ImageFont.truetype(fontpath, 8)
+    session = boto3.Session(profile_name=profile)
+    s3 = session.client('s3')
+
+    j = json.load(open(filename))
+
+    colors = defaultdict(lambda: (random.randint(128, 255),random.randint(128, 255), random.randint(128, 255)))
+    for task in j:
+        result = task['results'][0]
+        resource = task['resources'][0]
+
+        img = imageio.imread(generate_url(s3, bucket, resource['contents']))
+        img = img[:, :, :3][:,:,::-1]
+        img = np.ascontiguousarray(img, dtype=np.uint8)
+        print(img.shape)
+
+        for info in result['information']:
+            classname = ','.join(["{}:{}".format(question['name'], value['name']) for question in info['questions'] for value in question['value']])
+            print(classname)
+            xmin, ymin, xmax, ymax = map(int, (info['rectangle']['x1'], info['rectangle']['y1'], info['rectangle']['x2'], info['rectangle']['y2']))
+            print(xmin, ymin, xmax, ymax)
+            print(img.shape)
+            img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), colors[classname], 2)
+            img_pil = Image.fromarray(img)
+            draw = ImageDraw.Draw(img_pil)
+            x, y = (xmin, ymin + 4)
+            w, h = font.getsize(classname)
+            draw.rectangle((x, y, x + w, y + h), fill=colors[classname])
+            draw.text((x, y), classname, font = font , fill = (0, 0, 0) )
+            img = np.array(img_pil)
+        cv2.imwrite(os.path.join(output_dir, os.path.basename(resource['contents'])), img)
+
+
+if __name__ == '__main__':
+    main()
