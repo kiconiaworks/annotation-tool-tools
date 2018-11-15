@@ -23,12 +23,14 @@ def generate_url(s3, bucket_name, key):
 @click.argument('filename')
 @click.argument('output_dir')
 @click.option('--bucket', '-b')
+@click.option('--size', type=int, default=8)
 @click.option('--profile', '-p')
-def main(filename, output_dir, bucket, profile):
+def main(filename, output_dir, bucket, profile, size):
+    os.makedirs(output_dir, exist_ok=True)
     fontpath = 'font/ipaexg.ttf'
-    font = ImageFont.truetype(fontpath, 8)
-    session = boto3.Session(profile_name=profile)
-    s3 = session.client('s3')
+    font = ImageFont.truetype(fontpath, size)
+    #session = boto3.Session(profile_name=profile)
+    s3 = boto3.client('s3')
 
     j = json.load(open(filename))
 
@@ -40,6 +42,15 @@ def main(filename, output_dir, bucket, profile):
         img = imageio.imread(generate_url(s3, bucket, resource['contents']))
         img = img[:, :, :3][:,:,::-1]
         img = np.ascontiguousarray(img, dtype=np.uint8)
+        img_pil = Image.fromarray(img)
+        draw = ImageDraw.Draw(img_pil)
+        x, y = (0, 0)
+        username = result['worker']
+        w, h = font.getsize(username)
+        draw.rectangle((x, y, x + w, y + h), fill=colors[username])
+        draw.text((x, y), username, font = font , fill = (0, 0, 0) )
+        img = np.array(img_pil)
+
         print(img.shape)
 
         for info in result['information']:
@@ -56,7 +67,8 @@ def main(filename, output_dir, bucket, profile):
             draw.rectangle((x, y, x + w, y + h), fill=colors[classname])
             draw.text((x, y), classname, font = font , fill = (0, 0, 0) )
             img = np.array(img_pil)
-        cv2.imwrite(os.path.join(output_dir, os.path.basename(resource['contents'])), img)
+        os.makedirs(os.path.join(output_dir, result['worker']), exist_ok=True)
+        cv2.imwrite(os.path.join(output_dir, result['worker'], os.path.basename(resource['contents'])), img)
 
 
 if __name__ == '__main__':
