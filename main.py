@@ -23,13 +23,11 @@ def generate_url(s3, bucket_name, key):
 @click.argument('filename')
 @click.argument('output_dir')
 @click.option('--bucket', '-b')
-@click.option('--size', type=int, default=8)
-@click.option('--profile', '-p')
-def main(filename, output_dir, bucket, profile, size):
+@click.option('--font-size', 'size', type=int, default=8)
+def main(filename, output_dir, bucket, size):
     os.makedirs(output_dir, exist_ok=True)
     fontpath = 'font/ipaexg.ttf'
     font = ImageFont.truetype(fontpath, size)
-    #session = boto3.Session(profile_name=profile)
     s3 = boto3.client('s3')
 
     j = json.load(open(filename))

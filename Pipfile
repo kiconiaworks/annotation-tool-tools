@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+imageio = "*"
+click = "*"
+"boto3" = "*"
+matplotlib = "*"
+opencv-python = "*"
+pillow = "*"
+numpy = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.5"
