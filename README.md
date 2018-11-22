@@ -1,5 +1,11 @@
 # How to use
 
+## 0. fontのダウンロード(初回のみ)
+
+```
+sh init.sh
+```
+
 ## 1. Annotation toolからデータをダウンロードする
 
 ## 2. AWSのクレデンシャル情報をexportする
