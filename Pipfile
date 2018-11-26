@@ -11,6 +11,8 @@ matplotlib = "*"
 opencv-python = "*"
 pillow = "*"
 numpy = "*"
+retry = "*"
+"urllib3" = "==1.23"
 
 [dev-packages]
 
