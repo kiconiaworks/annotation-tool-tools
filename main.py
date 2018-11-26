@@ -9,6 +9,7 @@ import imageio
 from PIL import ImageFont, ImageDraw, Image
 import cv2
 import numpy as np
+from retry.api import retry_call
 
 
 def generate_url(s3, bucket_name, key):
@@ -24,7 +25,8 @@ def generate_url(s3, bucket_name, key):
 @click.argument('output_dir')
 @click.option('--bucket', '-b')
 @click.option('--font-size', 'size', type=int, default=8)
-def main(filename, output_dir, bucket, size):
+@click.option('--keyword')
+def main(filename, output_dir, bucket, size, keyword):
     os.makedirs(output_dir, exist_ok=True)
     fontpath = 'font/ipaexg.ttf'
     font = ImageFont.truetype(fontpath, size)
@@ -37,7 +39,9 @@ def main(filename, output_dir, bucket, size):
         result = task['results'][0]
         resource = task['resources'][0]
 
-        img = imageio.imread(generate_url(s3, bucket, resource['contents']))
+        if keyword is not None and keyword not in resource['contents']:
+            continue
+        img = retry_call(imageio.imread, fargs=(generate_url(s3, bucket, resource['contents']),), tries=3)
         img = img[:, :, :3][:,:,::-1]
         img = np.ascontiguousarray(img, dtype=np.uint8)
         img_pil = Image.fromarray(img)
