@@ -26,7 +26,9 @@ def generate_url(s3, bucket_name, key):
 @click.option('--bucket', '-b')
 @click.option('--font-size', 'size', type=int, default=8)
 @click.option('--keyword')
-def main(filename, output_dir, bucket, size, keyword):
+@click.option('--num', type=int, default=-1)
+@click.option('--noplot', is_flag=True)
+def main(filename, output_dir, bucket, size, keyword, num, noplot):
     os.makedirs(output_dir, exist_ok=True)
     fontpath = 'font/ipaexg.ttf'
     font = ImageFont.truetype(fontpath, size)
@@ -35,6 +37,8 @@ def main(filename, output_dir, bucket, size, keyword):
     j = json.load(open(filename))
 
     colors = defaultdict(lambda: (random.randint(128, 255),random.randint(128, 255), random.randint(128, 255)))
+    if num > 0:
+        j = j[:num]
     for task in j:
         result = task['results'][0]
         resource = task['resources'][0]
@@ -44,31 +48,33 @@ def main(filename, output_dir, bucket, size, keyword):
         img = retry_call(imageio.imread, fargs=(generate_url(s3, bucket, resource['contents']),), tries=3)
         img = img[:, :, :3][:,:,::-1]
         img = np.ascontiguousarray(img, dtype=np.uint8)
-        img_pil = Image.fromarray(img)
-        draw = ImageDraw.Draw(img_pil)
-        x, y = (0, 0)
-        username = result['worker']
-        w, h = font.getsize(username)
-        draw.rectangle((x, y, x + w, y + h), fill=colors[username])
-        draw.text((x, y), username, font = font , fill = (0, 0, 0) )
-        img = np.array(img_pil)
-
-        print(img.shape)
-
-        for info in result['information']:
-            classname = ','.join(["{}:{}".format(question['name'], value['name']) for question in info['questions'] for value in question['value']])
-            print(classname)
-            xmin, ymin, xmax, ymax = map(int, (info['rectangle']['x1'], info['rectangle']['y1'], info['rectangle']['x2'], info['rectangle']['y2']))
-            print(xmin, ymin, xmax, ymax)
-            print(img.shape)
-            img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), colors[classname], 2)
+        if not noplot:
             img_pil = Image.fromarray(img)
             draw = ImageDraw.Draw(img_pil)
-            x, y = (xmin, ymin + 4)
-            w, h = font.getsize(classname)
-            draw.rectangle((x, y, x + w, y + h), fill=colors[classname])
-            draw.text((x, y), classname, font = font , fill = (0, 0, 0) )
+            x, y = (0, 0)
+            username = result['worker']
+            w, h = font.getsize(username)
+            draw.rectangle((x, y, x + w, y + h), fill=colors[username])
+            draw.text((x, y), username, font = font , fill = (0, 0, 0) )
             img = np.array(img_pil)
+
+            print(img.shape)
+
+            for info in result['information']:
+                classname = ','.join(["{}:{}".format(question['name'], value['name']) for question in info['questions'] for value in question['value']])
+                classname = '{} ({})'.format(classname, info['input_text'])
+                print(classname)
+                xmin, ymin, xmax, ymax = map(int, (info['rectangle']['x1'], info['rectangle']['y1'], info['rectangle']['x2'], info['rectangle']['y2']))
+                print(xmin, ymin, xmax, ymax)
+                print(img.shape)
+                img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), colors[classname], 2)
+                img_pil = Image.fromarray(img)
+                draw = ImageDraw.Draw(img_pil)
+                x, y = (xmin, ymin + 4)
+                w, h = font.getsize(classname)
+                draw.rectangle((x, y, x + w, y + h), fill=colors[classname])
+                draw.text((x, y), classname, font = font , fill = (0, 0, 0) )
+                img = np.array(img_pil)
         os.makedirs(os.path.join(output_dir, result['worker']), exist_ok=True)
         cv2.imwrite(os.path.join(output_dir, result['worker'], os.path.basename(resource['contents'])), img)
 
