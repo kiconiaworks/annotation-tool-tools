@@ -28,7 +28,8 @@ def generate_url(s3, bucket_name, key):
 @click.option('--keyword')
 @click.option('--num', type=int, default=-1)
 @click.option('--noplot', is_flag=True)
-def main(filename, output_dir, bucket, size, keyword, num, noplot):
+@click.option('--local')
+def main(filename, output_dir, bucket, size, keyword, num, noplot, local):
     os.makedirs(output_dir, exist_ok=True)
     fontpath = 'font/ipaexg.ttf'
     font = ImageFont.truetype(fontpath, size)
@@ -45,7 +46,10 @@ def main(filename, output_dir, bucket, size, keyword, num, noplot):
 
         if keyword is not None and keyword not in resource['contents']:
             continue
-        img = retry_call(imageio.imread, fargs=(generate_url(s3, bucket, resource['contents']),), tries=3)
+        if local is None:
+            img = retry_call(imageio.imread, fargs=(generate_url(s3, bucket, resource['contents']),), tries=3)
+        else:
+            img = imageio.imread(os.path.join(local, resource['contents']))
         img = img[:, :, :3][:,:,::-1]
         img = np.ascontiguousarray(img, dtype=np.uint8)
         if not noplot:
