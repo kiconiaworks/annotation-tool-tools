@@ -1,9 +1,16 @@
 # How to use
 
-## 0. fontのダウンロード(初回のみ)
+## 0.1. fontのダウンロード(初回のみ)
 
 ```
 sh init.sh
+```
+
+# 0.2. ライブラリのインストール
+
+```
+pipenv --python 3.5
+pipenv sync
 ```
 
 ## 1. Annotation toolからデータをダウンロードする
